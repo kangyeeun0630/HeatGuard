@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HeatGuard</title>
+<meta name="description" content="소규모 사업장 사업주를 위한 폭염 판정·공지·AI 예측 웹 서비스" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f3f5f7;--card:#ffffff;--sub:#eef1f4;--line:#d7dde3;--text:#14202b;--muted:#5a6774;
+  --brand:#0c3b52;--accent:#0f7c6c;--accent-bg:#dff3ee;--accent-tx:#0b5a4f;
+  --warn:#b45309;--warn-bg:#fdf1dc;--warn-tx:#7c3a06;
+  --bad:#c0262d;--bad-bg:#fde6e6;--bad-tx:#8a1c21;
+  --ok:#15803d;--ok-bg:#e3f4e8;--ok-tx:#14532d;
+  --shadow:0 1px 2px rgba(20,32,43,.06);--r:12px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e151c;--card:#16212b;--sub:#1d2a36;--line:#2c3b49;--text:#e8eef3;--muted:#9aabb9;
+  --brand:#0a2433;--accent:#2bb39f;--accent-bg:#123d37;--accent-tx:#a5ecdf;
+  --warn:#f0a340;--warn-bg:#3d2a0e;--warn-tx:#fcd9a0;
+  --bad:#f0646a;--bad-bg:#3f1618;--bad-tx:#fbc2c4;
+  --ok:#4ade80;--ok-bg:#12321f;--ok-tx:#bbf7d0;--shadow:none;}}
+:root[data-theme="dark"]{
+  --bg:#0e151c;--card:#16212b;--sub:#1d2a36;--line:#2c3b49;--text:#e8eef3;--muted:#9aabb9;
+  --brand:#0a2433;--accent:#2bb39f;--accent-bg:#123d37;--accent-tx:#a5ecdf;
+  --warn:#f0a340;--warn-bg:#3d2a0e;--warn-tx:#fcd9a0;
+  --bad:#f0646a;--bad-bg:#3f1618;--bad-tx:#fbc2c4;
+  --ok:#4ade80;--ok-bg:#12321f;--ok-tx:#bbf7d0;--shadow:none;}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'IBM Plex Sans KR',system-ui,-apple-system,sans-serif;line-height:1.55;-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+.mono{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.banner{background:var(--bad);color:#fff;font-weight:600;font-size:.88rem;padding:8px 16px;text-align:center}
+header{background:var(--brand);color:#fff}
+.hwrap{max-width:980px;margin:0 auto;padding:14px 16px 0;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.brand{font-size:1.3rem;font-weight:700;letter-spacing:-.02em;margin:0}
+.brand small{display:block;font-size:.8rem;font-weight:400;opacity:.8;letter-spacing:0}
+.theme{white-space:nowrap;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:8px;padding:6px 10px;font:inherit;font-size:.82rem;cursor:pointer}
+nav{max-width:980px;margin:0 auto;padding:12px 16px 0;display:flex;gap:4px}
+nav button{flex:1;background:transparent;color:rgba(255,255,255,.75);border:0;border-bottom:3px solid transparent;padding:10px 6px 11px;font:inherit;font-weight:600;font-size:.95rem;cursor:pointer}
+nav button[aria-selected="true"]{color:#fff;border-bottom-color:#5fd4c0}
+main{max-width:980px;margin:0 auto;padding:16px 16px 56px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+h2{font-size:1.08rem;margin:0 0 12px}
+h3{font-size:.98rem;margin:14px 0 8px}
+.muted{color:var(--muted);font-size:.86rem}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:640px){.grid,.grid3{grid-template-columns:1fr}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.86rem;font-weight:600}
+input[type=text],input[type=number],select,textarea{width:100%;min-height:44px;padding:9px 11px;font:inherit;font-size:1rem;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px}
+textarea{min-height:150px;resize:vertical;line-height:1.6}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:0;border-color:var(--accent)}
+.checks{display:flex;flex-direction:column;gap:8px;margin:12px 0 4px}
+.checks label{display:flex;gap:9px;align-items:flex-start;font-size:.92rem;cursor:pointer}
+.checks input{width:19px;height:19px;margin-top:2px;flex-shrink:0;accent-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:9px 16px;font:inherit;font-weight:700;font-size:.95rem;border-radius:8px;border:1px solid transparent;cursor:pointer;background:var(--accent);color:#fff}
+.btn.ghost{background:transparent;color:var(--text);border-color:var(--line)}
+.btn.danger{background:var(--bad)}
+.btn.sm{min-height:34px;padding:5px 11px;font-size:.84rem}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.between h2{margin:0}
+/* 판정 */
+.verdict{border-radius:var(--r);padding:16px;margin-top:14px;border:1px solid var(--line);background:var(--sub)}
+.verdict.normal{border-left:6px solid var(--ok)}
+.verdict.warning{border-left:6px solid var(--warn)}
+.verdict.danger{border-left:6px solid var(--bad)}
+.vtop{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px}
+.big{font-family:'IBM Plex Mono',monospace;font-size:2.3rem;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:.8rem;font-weight:700}
+.b-ok{background:var(--ok-bg);color:var(--ok-tx)}
+.b-warn{background:var(--warn-bg);color:var(--warn-tx)}
+.b-bad{background:var(--bad-bg);color:var(--bad-tx)}
+.b-ref{background:var(--sub);color:var(--text);border:1px solid var(--line)}
+.items{list-style:none;padding:0;margin:12px 0 0;display:flex;flex-direction:column;gap:8px}
+.items li{display:flex;gap:8px;align-items:flex-start;font-size:.93rem}
+.items .badge{flex-shrink:0;margin-top:1px}
+.empty{padding:20px 12px;text-align:center;color:var(--muted);background:var(--sub);border:1px dashed var(--line);border-radius:8px;font-size:.92rem}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:calc(100% - 32px);background:var(--text);color:var(--card);padding:11px 16px;border-radius:10px;font-weight:600;font-size:.92rem;z-index:50;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.toast.err{background:var(--bad);color:#fff}
+details.card>summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:'펼치기';font-size:.8rem;font-weight:600;color:var(--muted)}
+details.card[open]>summary::after{content:'접기'}
+details.card[open]>summary{margin-bottom:12px}
+/* 표 */
+.tw{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th,td{border-bottom:1px solid var(--line);padding:8px 9px;text-align:left;vertical-align:top}
+th{background:var(--sub);font-weight:700;white-space:nowrap}
+td.n,th.n{text-align:right;font-family:'IBM Plex Mono',monospace}
+.matrix td,.matrix th{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:.8rem;padding:6px}
+.c-ok{background:var(--ok-bg);color:var(--ok-tx)}.c-warn{background:var(--warn-bg);color:var(--warn-tx);font-weight:600}.c-bad{background:var(--bad-bg);color:var(--bad-tx);font-weight:700}
+.hl{font-weight:700;color:var(--accent-tx);background:var(--accent-bg)}
+/* 요약 */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+@media (max-width:720px){.stats{grid-template-columns:1fr}}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.stat .k{font-size:.82rem;color:var(--muted);font-weight:600}
+.stat .v{font-family:'IBM Plex Mono',monospace;font-size:1.7rem;font-weight:600;margin:4px 0 2px}
+.stat .d{font-size:.85rem;color:var(--muted)}
+.chart{position:relative;height:280px}
+.src{font-size:.84rem;color:var(--muted);margin:0 0 12px}
+pre.tree{font-family:'IBM Plex Mono',monospace;font-size:.78rem;line-height:1.5;background:var(--sub);border-radius:8px;padding:12px;overflow-x:auto;margin:0}
+.path{list-style:none;padding:0;margin:8px 0 0;font-family:'IBM Plex Mono',monospace;font-size:.85rem}
+.path li{padding:4px 0;border-bottom:1px dashed var(--line)}
+ul.plain{margin:6px 0 0;padding-left:20px}ul.plain li{margin-bottom:5px}
+.note{font-size:.84rem;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="banner" role="note">어지럼증·두통·메스꺼움이 있으면 즉시 작업을 멈추고 시원한 곳에서 몸을 식히세요. 의식이 흐리면 119.</div>
+<header>
+  <div class="hwrap">
+    <h1 class="brand">HeatGuard<small>소규모 사업장 폭염 판정 · 공지 · AI 예측</small></h1>
+    <button type="button" class="theme" id="themeBtn">어두운 화면</button>
+  </div>
+  <nav role="tablist">
+    <button role="tab" data-tab="judge" aria-selected="true">지금 판정</button>
+    <button role="tab" data-tab="stats" aria-selected="false">폭염 통계·AI</button>
+    <button role="tab" data-tab="records" aria-selected="false">기록·출처</button>
+  </nav>
+</header>
+
+<main>
+<!-- ① 지금 판정 -->
+<section id="tab-judge">
+  <div class="card">
+    <h2>현장 측정값 입력</h2>
+    <p class="muted" style="margin-top:-6px">날씨 앱 예보가 아니라, 노동자가 일하는 장소에서 잰 값을 넣으세요.</p>
+    <div class="grid">
+      <label class="f">기온 (℃)<input type="number" id="ta" step="0.1" inputmode="decimal" placeholder="예: 32.5"></label>
+      <label class="f">상대습도 (%)<input type="number" id="rh" step="1" inputmode="decimal" placeholder="예: 65"></label>
+      <label class="f">측정 높이 (m, 기준 1.2~1.5)<input type="number" id="hgt" step="0.1" inputmode="decimal" placeholder="예: 1.3"></label>
+      <label class="f">연속 작업시간 (시간)<input type="number" id="hrs" step="0.5" inputmode="decimal" placeholder="예: 3"></label>
+      <label class="f">작업 구역 (선택)<input type="text" id="zone" maxlength="30" placeholder="예: 남측 조경 구역"></label>
+      <label class="f">휴게실 위치 (공지에 들어감, 선택)<input type="text" id="restLoc" maxlength="40" placeholder="예: 정문 옆 컨테이너"></label>
+    </div>
+    <div class="checks">
+      <label><input type="checkbox" id="spot"> 노동자가 실제로 일하는 주된 작업장소에서 측정함</label>
+      <label><input type="checkbox" id="noAir"> 냉방기·선풍기 바람이 측정기에 직접 닿지 않음</label>
+    </div>
+    <div id="verdict" class="empty" style="margin-top:14px">기온과 습도를 넣으면 체감온도와 지금 지켜야 할 기준이 바로 나타납니다.</div>
+    <div class="row" style="margin-top:12px"><button class="btn ghost" id="saveMeas" type="button">측정 기록 저장</button></div>
+  </div>
+
+  <div class="card">
+    <h2>공지 만들기</h2>
+    <p class="muted" style="margin-top:-6px">판정 결과로 자동 작성됩니다. 복사해서 현장 단체 대화방에 붙여 넣으세요.</p>
+    <textarea id="notice" readonly placeholder="기온과 습도를 먼저 입력하세요."></textarea>
+    <div class="row" style="margin-top:10px"><button class="btn" id="copyBtn" type="button">문구 복사</button></div>
+  </div>
+
+  <details class="card" id="raBox">
+    <summary>휴게공간 점검</summary>
+    <div class="grid">
+      <label class="f">휴게공간 이름<input type="text" id="raName" maxlength="30" placeholder="예: 1층 컨테이너 휴게실"></label>
+      <label class="f">시설 종류<select id="raType"><option value="실내">실내 휴게시설 (온·습도 기준 적용)</option><option value="간이">간이 휴게시설 (그늘막 등, 기준 미적용)</option></select></label>
+      <label class="f">실내 온도 (℃, 기준 18~28)<input type="number" id="raT" step="0.1" inputmode="decimal"></label>
+      <label class="f">습도 (%, 기준 50~55)<input type="number" id="raH" step="1" inputmode="decimal"></label>
+      <label class="f">냉방설비<select id="raCool"><option value="">선택</option><option>작동 중</option><option>꺼짐</option><option>없음</option></select></label>
+      <label class="f">식수<select id="raWater"><option value="">선택</option><option>있음</option><option>없음</option></select></label>
+      <label class="f">지금 이용 가능<select id="raUse"><option value="">선택</option><option>가능</option><option>불가</option></select></label>
+    </div>
+    <div id="raResult" class="empty" style="margin-top:12px">온도와 습도를 넣으면 산업안전보건법 시행규칙 별표 21의2 기준과 비교합니다.</div>
+    <div class="row" style="margin-top:12px"><button class="btn ghost" id="raSave" type="button">점검 결과 저장</button></div>
+  </details>
+
+  <details class="card">
+    <summary>체감온도 참고표 (기온 29~39℃ × 습도 30~90%)</summary>
+    <p class="muted">기상청 여름철 체감온도 산출식, 소수 첫째 자리 버림. 색: 31℃ 이상 주의, 33℃ 이상 법정 휴식, 35℃ 이상 작업중지 권고.</p>
+    <div class="tw"><table class="matrix" id="matrix"></table></div>
+  </details>
+</section>
+
+<!-- ② 폭염 통계·AI -->
+<section id="tab-stats" hidden>
+  <p class="src" id="src">기상청 자료를 불러오는 중…</p>
+  <div id="statsErr" class="card" hidden></div>
+  <div id="statsBody" hidden>
+    <div class="stats" id="statCards"></div>
+    <div class="card"><h2>연도·월별 체감온도 33℃ 이상 시간 수</h2><div class="chart" id="cMonthW"><canvas id="cMonth"></canvas></div></div>
+    <div class="card"><h2>7~8월 시각별 평균 기온과 체감온도</h2><div class="chart" id="cHourW"><canvas id="cHour"></canvas></div></div>
+    <div class="card">
+      <h2>3시간 뒤 체감온도 33℃ 이상 예측: 방법 비교</h2>
+      <p class="muted" style="margin-top:-6px" id="splitTxt"></p>
+      <div class="tw" id="metricTbl"></div>
+      <div class="chart" id="cMetW" style="margin-top:14px"><canvas id="cMet"></canvas></div>
+      <p class="note">재현율 = 실제 위험 시간 중 미리 찾아낸 비율. 안전 서비스에서는 위험을 놓치지 않는 것이 가장 중요해 재현율을 우선합니다. AI 예측은 참고 정보이며 법정 판정을 대신하지 않습니다.</p>
+    </div>
+    <details class="card"><summary>3시간 뒤 위험 사전 예측 (결정트리)</summary>
+      <div class="grid3">
+        <label class="f">월 (5~9)<input type="number" id="pMo" min="5" max="9" step="1"></label>
+        <label class="f">시각 (6~15시)<input type="number" id="pH" min="6" max="15" step="1"></label>
+        <label class="f">현재 기온 (℃)<input type="number" id="pT" step="0.1"></label>
+        <label class="f">현재 습도 (%)<input type="number" id="pRh" step="1"></label>
+        <label class="f">현재 풍속 (m/s)<input type="number" id="pW" step="0.1"></label>
+      </div>
+      <div class="row" style="margin-top:12px"><button class="btn" id="predBtn" type="button">예측하기</button></div>
+      <div id="predOut" class="empty" style="margin-top:12px">값을 넣고 예측하기를 누르세요.</div>
+    </details>
+    <details class="card"><summary>결정트리 판단 규칙</summary><pre class="tree" id="treeTxt"></pre></details>
+    <details class="card"><summary>특징 중요도</summary><div class="tw" id="impTbl"></div></details>
+    <details class="card"><summary>자료 품질 처리와 학습·시험 분할 기록</summary><div class="tw" id="preTbl"></div></details>
+  </div>
+  <details class="card"><summary>다른 관측소 자료로 분석하기</summary>
+    <p class="muted">기상자료개방포털 → 종관기상관측(ASOS) → 시간 자료. 같은 관측소 1곳, 2개 연도 이상, 5~9월, 기온·풍속·습도와 QC플래그를 체크해 받은 CSV를 고르세요. 파일은 이 브라우저 안에서만 처리됩니다.</p>
+    <label class="btn" style="cursor:pointer">CSV 파일 고르기 (여러 개 가능)<input type="file" id="csvIn" multiple hidden></label>
+    <p class="note" id="csvNames">선택된 파일 없음</p>
+  </details>
+</section>
+
+<!-- ③ 기록·출처 -->
+<section id="tab-records" hidden>
+  <div class="card">
+    <div class="between"><h2>측정 기록</h2><button class="btn ghost sm" data-csv="measures" type="button">CSV 내려받기</button></div>
+    <div class="tw" id="tMeasures"></div>
+    <div class="chart" id="cTrendW" style="margin-top:12px;height:220px" hidden><canvas id="cTrend"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="between"><h2>공지 문구 생성 기록</h2><button class="btn ghost sm" data-csv="notices" type="button">CSV 내려받기</button></div>
+    <p class="muted" style="margin-top:-4px">HeatGuard에서 공지 문구를 만들고 복사한 시각입니다. 실제 전송 여부와 노동자의 휴식 이행은 확인하지 않습니다.</p>
+    <div class="tw" id="tNotices"></div>
+  </div>
+  <div class="card">
+    <div class="between"><h2>휴게공간 점검 기록</h2><button class="btn ghost sm" data-csv="rooms" type="button">CSV 내려받기</button></div>
+    <div class="tw" id="tRooms"></div>
+  </div>
+  <div class="card">
+    <h2>백업</h2>
+    <p class="muted" style="margin-top:-6px">기록은 이 기기의 브라우저에만 저장됩니다. 기기를 바꿀 때는 백업 파일로 옮기세요.</p>
+    <div class="row">
+      <button class="btn ghost" id="backupBtn" type="button">백업 파일 내려받기</button>
+      <label class="btn ghost" style="cursor:pointer">백업 불러오기<input type="file" id="importIn" hidden></label>
+      <button class="btn danger" id="clearBtn" type="button">전체 기록 삭제</button>
+    </div>
+  </div>
+  <details class="card"><summary>법령 기준과 출처</summary>
+    <div class="tw"><table>
+      <thead><tr><th>체감온도</th><th>구분</th><th>조치</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>31℃ 이상<br>(2시간 이상 작업)</td><td><span class="badge b-bad">법적 의무</span></td><td>냉방·통풍, 작업시간 조정, 주기적 휴식 중 하나 이상</td><td>산업안전보건기준에 관한 규칙 제560조</td></tr>
+        <tr><td>33℃ 이상</td><td><span class="badge b-bad">법적 의무</span></td><td>2시간 이내마다 20분 이상 휴식</td><td>산업안전보건기준에 관한 규칙 제560조</td></tr>
+        <tr><td>35℃ 이상</td><td><span class="badge b-warn">권고</span></td><td>매시간 15분 이상 휴식, 14~17시 불가피한 경우 외 옥외작업 중지</td><td>고용노동부 폭염 대응지침(2026.5.)</td></tr>
+        <tr><td>38℃ 이상</td><td><span class="badge b-warn">권고</span></td><td>긴급 작업 외 옥외작업 중지</td><td>고용노동부 폭염 대응지침(2026.5.)</td></tr>
+      </tbody></table></div>
+    <h3>측정 방법</h3>
+    <p class="muted">지면에서 1.2~1.5m 높이, 노동자가 일하는 주된 작업장소, 냉방·송풍 바람이 직접 닿지 않는 곳(산업안전보건기준에 관한 규칙 별표 13의2). 조건을 지키지 않은 값은 '참고값'으로 표시합니다.</p>
+    <h3>데이터 원칙</h3>
+    <ul class="plain muted">
+      <li>가상 데이터를 만들거나 넣지 않습니다. 자료가 없으면 '자료 없음'으로 표시합니다.</li>
+      <li>통계·AI 분석은 기상청 기상자료개방포털에서 내려받은 실제 종관기상관측(ASOS) 시간 자료만 사용합니다.</li>
+      <li>노동자 개인 정보를 모으지 않습니다.</li>
+    </ul>
+    <h3>출처</h3>
+    <ul class="plain muted">
+      <li>기상청, 여름철 체감온도 산출식(2022.6.2. 변경), 기상자료개방포털</li>
+      <li>Stull, R. (2011). Wet-bulb temperature from relative humidity and air temperature. J. Appl. Meteor. Climatol., 50(11), 2267–2269.</li>
+      <li>산업안전보건기준에 관한 규칙 제558~562조, 별표 13의2 / 산업안전보건법 시행규칙 제194조의2, 별표 21의2</li>
+      <li>고용노동부, 온열질환 예방을 위한 폭염 대비 사업장 대응지침(2026)</li>
+      <li>기상청, 종관기상관측(ASOS) 시간 자료, 기상자료개방포털</li>
+    </ul>
+  </details>
+</section>
+</main>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+/* ===== 계산 모듈: 검증된 코드 그대로 사용 (scikit-learn 결과와 일치 확인) ===== */
+    (function (global) {
+      'use strict';
+
+      function validateWeatherInput(ta, rh) {
+        const temp = Number(ta);
+        const hum = Number(rh);
+
+        if (ta === '' || ta === null || ta === undefined || Number.isNaN(temp)) {
+          return { valid: false, message: '기온을 숫자로 입력하세요.' };
+        }
+        if (rh === '' || rh === null || rh === undefined || Number.isNaN(hum)) {
+          return { valid: false, message: '습도를 숫자로 입력하세요.' };
+        }
+        if (temp < -40 || temp > 60) {
+          return { valid: false, message: '기온은 -40℃ 이상 60℃ 이하여야 합니다.' };
+        }
+        if (hum <= 0 || hum > 100) {
+          return { valid: false, message: '습도는 0% 초과 100% 이하여야 합니다.' };
+        }
+        return { valid: true, ta: temp, rh: hum };
+      }
+
+      function calcTw(ta, rh) {
+        const term1 = ta * Math.atan(0.151977 * Math.sqrt(rh + 8.313659));
+        const term2 = Math.atan(ta + rh);
+        const term3 = -Math.atan(rh - 1.67633);
+        const term4 = 0.00391838 * Math.pow(rh, 1.5) * Math.atan(0.023101 * rh);
+        const term5 = -4.686035;
+        return term1 + term2 + term3 + term4 + term5;
+      }
+
+      function calcApparentTemp(ta, rh) {
+        const check = validateWeatherInput(ta, rh);
+        if (!check.valid) return null;
+
+        const tw = calcTw(check.ta, check.rh);
+        const raw =
+          -0.2442 +
+          0.55399 * tw +
+          0.45535 * check.ta -
+          0.0022 * Math.pow(tw, 2) +
+          0.00278 * tw * check.ta +
+          3.0;
+
+        const floored = Math.floor(raw * 10 + 1e-9) / 10;
+        const twRounded = Math.round(tw * 10) / 10;
+
+        return {
+          tw: tw,
+          twRounded: twRounded,
+          raw: raw,
+          value: floored
+        };
+      }
+
+      function judgeHeat(apparentTemp, options) {
+        const opts = options || {};
+        const temp = Number(apparentTemp);
+        const height = Number(opts.heightM);
+        const atWorkSpot = Boolean(opts.atWorkSpot);
+        const noDirectAirflow = Boolean(opts.noDirectAirflow);
+        const hasWorkHours =
+          opts.workHours !== '' &&
+          opts.workHours !== null &&
+          opts.workHours !== undefined &&
+          !Number.isNaN(Number(opts.workHours));
+        const workHours = hasWorkHours ? Number(opts.workHours) : null;
+
+        const reasons = [];
+        if (Number.isNaN(height) || height < 1.2 || height > 1.5) {
+          reasons.push('측정 높이가 1.2~1.5m 범위가 아님');
+        }
+        if (!atWorkSpot) {
+          reasons.push('주된 작업장소에서 측정하지 않음');
+        }
+        if (!noDirectAirflow) {
+          reasons.push('냉방·송풍 바람이 직접 닿는 위치임');
+        }
+
+        const isReferenceOnly = reasons.length > 0;
+
+        let level = 'normal';
+        let levelLabel = '정상 (31℃ 미만)';
+        if (temp >= 38.0) {
+          level = 'danger';
+          levelLabel = '위험 (38℃ 이상)';
+        } else if (temp >= 35.0) {
+          level = 'danger';
+          levelLabel = '경고 (35℃ 이상)';
+        } else if (temp >= 33.0) {
+          level = 'danger';
+          levelLabel = '폭염 의무 (33℃ 이상)';
+        } else if (temp >= 31.0) {
+          level = 'warning';
+          levelLabel = '폭염 주의·의무 (31℃ 이상)';
+        }
+
+        if (isReferenceOnly) {
+          return {
+            isReferenceOnly: true,
+            statusLabel: '참고값',
+            referenceReasons: reasons,
+            level: level,
+            levelLabel: levelLabel,
+            items: [],
+            needsSupervisorCheck: false
+          };
+        }
+
+        const items = [];
+        let needsSupervisorCheck = false;
+
+        if (temp >= 31.0) {
+          if (workHours !== null && workHours >= 2) {
+            items.push({
+              type: 'mandatory',
+              badge: '법적 의무',
+              threshold: '31℃ 이상',
+              text: '냉방·통풍장치 가동, 작업시간 조정, 주기적 휴식 부여 중 하나 이상 조치 (산업안전보건기준에 관한 규칙 제560조제2항)'
+            });
+          } else {
+            needsSupervisorCheck = true;
+            items.push({
+              type: 'check',
+              badge: '담당자 확인 필요',
+              threshold: '31℃ 이상',
+              text: '연속 작업시간 미입력 또는 2시간 미만: 2시간 이상 작업 시 냉방·통풍, 작업시간 조정, 휴식 중 하나 이상 법적 의무 적용 (제560조제2항)'
+            });
+          }
+        }
+
+        if (temp >= 33.0) {
+          items.push({
+            type: 'mandatory',
+            badge: '법적 의무',
+            threshold: '33℃ 이상',
+            text: '매 2시간 이내마다 20분 이상 휴식 부여 (산업안전보건기준에 관한 규칙 제560조제3항)'
+          });
+        }
+
+        if (temp >= 35.0) {
+          items.push({
+            type: 'recommended',
+            badge: '권고',
+            threshold: '35℃ 이상',
+            text: '매시간 15분 이상 휴식 부여 및 무더위 시간대(14~17시) 불가피한 경우 외 옥외작업 중지 (고용노동부 폭염 대응지침)'
+          });
+        }
+
+        if (temp >= 38.0) {
+          items.push({
+            type: 'recommended',
+            badge: '권고',
+            threshold: '38℃ 이상',
+            text: '재난·안전관리 등 긴급 작업 외 옥외작업 전면 중지 (고용노동부 폭염 대응지침)'
+          });
+        }
+
+        return {
+          isReferenceOnly: false,
+          statusLabel: '법정 판정',
+          referenceReasons: [],
+          level: level,
+          levelLabel: levelLabel,
+          items: items,
+          needsSupervisorCheck: needsSupervisorCheck
+        };
+      }
+
+      function judgeRestArea(temp, humidity, isTemporary, extra) {
+        const opts = extra || {};
+        const messages = [];
+        let status = '적정';
+
+        if (isTemporary) {
+          status = '기준 미적용 (간이시설)';
+          messages.push('간이 휴게시설(그늘막 등)은 실내 온도·습도 기준이 적용되지 않습니다.');
+        } else {
+          const t = Number(temp);
+          const h = Number(humidity);
+          const issues = [];
+
+          if (temp === '' || temp === null || Number.isNaN(t) || t < 18.0 || t > 28.0) {
+            issues.push(`온도 적정 범위(18~28℃) 이탈 (현재: ${temp === '' || temp === null || Number.isNaN(t) ? '미입력' : t + '℃'})`);
+          }
+          if (humidity === '' || humidity === null || Number.isNaN(h) || h < 50.0 || h > 55.0) {
+            issues.push(`습도 적정 범위(50~55%) 이탈 (현재: ${humidity === '' || humidity === null || Number.isNaN(h) ? '미입력' : h + '%'})`);
+          }
+
+          if (issues.length > 0) {
+            status = '점검 필요';
+            messages.push(
+              '점검 필요 (산업안전보건법 시행규칙 별표 21의2 기준): ' + issues.join(', ')
+            );
+          } else {
+            status = '적정';
+            messages.push('온도(18~28℃) 및 습도(50~55%) 기준을 충족합니다.');
+          }
+        }
+
+        if (opts.drinkingWater === '없음') {
+          messages.push('식수 없음: 깨끗한 식수 또는 이온음료 등 음료수를 즉시 비치하세요.');
+        }
+        if (opts.usable === '불가') {
+          messages.push('사용 불가: 노동자가 즉시 이용할 수 있는 다른 인근 휴게공간을 안내하세요.');
+        }
+
+        return {
+          status: status,
+          needsCheck: status === '점검 필요' || opts.drinkingWater === '없음' || opts.usable === '불가',
+          messages: messages
+        };
+      }
+
+      global.HeatRules = {
+        validateWeatherInput: validateWeatherInput,
+        calcTw: calcTw,
+        calcApparentTemp: calcApparentTemp,
+        judgeHeat: judgeHeat,
+        judgeRestArea: judgeRestArea
+      };
+    })(window);
+
+const FEATURE_NAMES = ['기온(℃)', '습도(%)', '풍속(m/s)', '시각(시)', '월'];
+      async function readCsvFileText(file) {
+        const buffer = await file.arrayBuffer();
+        try {
+          const eucDecoder = new TextDecoder('euc-kr', { fatal: true });
+          const text = eucDecoder.decode(buffer);
+          if (text.includes('일시') || text.includes('기온')) return text;
+        } catch (e) {
+          // UTF-8 폴백
+        }
+        const utfDecoder = new TextDecoder('utf-8');
+        return utfDecoder.decode(buffer);
+      }
+
+      function parseCsv(text) {
+        const rows = [];
+        let row = [];
+        let cell = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          const next = text[i + 1];
+
+          if (inQuotes) {
+            if (ch === '"' && next === '"') {
+              cell += '"';
+              i++;
+            } else if (ch === '"') {
+              inQuotes = false;
+            } else {
+              cell += ch;
+            }
+          } else {
+            if (ch === '"') {
+              inQuotes = true;
+            } else if (ch === ',') {
+              row.push(cell.trim());
+              cell = '';
+            } else if (ch === '\r' && next === '\n') {
+              row.push(cell.trim());
+              rows.push(row);
+              row = [];
+              cell = '';
+              i++;
+            } else if (ch === '\n' || ch === '\r') {
+              row.push(cell.trim());
+              rows.push(row);
+              row = [];
+              cell = '';
+            } else {
+              cell += ch;
+            }
+          }
+        }
+        if (cell.length > 0 || row.length > 0) {
+          row.push(cell.trim());
+          rows.push(row);
+        }
+        return rows.filter((r) => r.some((c) => c !== ''));
+      }
+
+      function findColumns(headerRow) {
+        const clean = headerRow.map((h) => h.replace(/^\uFEFF/, '').replace(/\s+/g, ''));
+        const idxStation = clean.findIndex((h) => h.includes('지점') && !h.includes('명'));
+        const idxStationName = clean.findIndex((h) => h.includes('지점명'));
+        const idxTime = clean.findIndex((h) => h.includes('일시'));
+        const idxTemp = clean.findIndex((h) => h.startsWith('기온'));
+        const idxHum = clean.findIndex((h) => h.startsWith('습도'));
+        const idxWind = clean.findIndex((h) => h.startsWith('풍속'));
+
+        const findQcAfter = (baseIdx, keyword) => {
+          if (baseIdx < 0) return -1;
+          if (baseIdx + 1 < clean.length && clean[baseIdx + 1].includes('QC')) {
+            return baseIdx + 1;
+          }
+          return clean.findIndex((h) => h.includes(keyword) && h.includes('QC'));
+        };
+
+        const idxTempQc = findQcAfter(idxTemp, '기온');
+        const idxHumQc = findQcAfter(idxHum, '습도');
+        const idxWindQc = findQcAfter(idxWind, '풍속');
+
+        return {
+          idxStation,
+          idxStationName,
+          idxTime,
+          idxTemp,
+          idxHum,
+          idxWind,
+          idxTempQc,
+          idxHumQc,
+          idxWindQc
+        };
+      }
+
+      function parseAsosTimestamp(str) {
+        const m = String(str || '').match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})\s+(\d{1,2}):(\d{2})/);
+        if (!m) return null;
+        const year = Number(m[1]);
+        const month = Number(m[2]);
+        const day = Number(m[3]);
+        const hour = Number(m[4]);
+        const minute = Number(m[5]);
+        if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 || minute !== 0) {
+          return null;
+        }
+        const ms = new Date(year, month - 1, day, hour, 0, 0, 0).getTime();
+        if (Number.isNaN(ms)) return null;
+        return { ms, year, month, day, hour };
+      }
+
+      function computeBalancedWeights(samples) {
+        const n = samples.length;
+        const pos = samples.filter((s) => s.label === 1).length;
+        const neg = n - pos;
+        const w1 = pos > 0 ? n / (2 * pos) : 1;
+        const w0 = neg > 0 ? n / (2 * neg) : 1;
+        return samples.map((s) => (s.label === 1 ? w1 : w0));
+      }
+
+      function trainCartTree(trainData, maxDepth, minSamplesLeaf) {
+        const weights = computeBalancedWeights(trainData);
+        const items = trainData.map((d, i) => ({
+          features: d.features,
+          label: d.label,
+          weight: weights[i]
+        }));
+
+        const totalWeight = items.reduce((acc, it) => acc + it.weight, 0);
+        const importances = new Array(FEATURE_NAMES.length).fill(0);
+
+        function giniImpurity(subset) {
+          let w0 = 0;
+          let w1 = 0;
+          for (let i = 0; i < subset.length; i++) {
+            if (subset[i].label === 1) w1 += subset[i].weight;
+            else w0 += subset[i].weight;
+          }
+          const wSum = w0 + w1;
+          if (wSum <= 0) return 0;
+          const p0 = w0 / wSum;
+          const p1 = w1 / wSum;
+          return 1 - (p0 * p0 + p1 * p1);
+        }
+
+        function buildNode(subset, depth) {
+          let w0 = 0;
+          let w1 = 0;
+          for (let i = 0; i < subset.length; i++) {
+            if (subset[i].label === 1) w1 += subset[i].weight;
+            else w0 += subset[i].weight;
+          }
+          const wSum = w0 + w1;
+          const prob1 = wSum > 0 ? w1 / wSum : 0;
+          const currentGini = giniImpurity(subset);
+
+          if (depth >= maxDepth || subset.length < minSamplesLeaf * 2 || currentGini === 0) {
+            return { isLeaf: true, prob1, count: subset.length };
+          }
+
+          let bestGain = 0;
+          let bestFeat = -1;
+          let bestThresh = 0;
+          let bestLeft = null;
+          let bestRight = null;
+
+          for (let f = 0; f < FEATURE_NAMES.length; f++) {
+            const vals = Array.from(new Set(subset.map((s) => s.features[f]))).sort((a, b) => a - b);
+            for (let v = 0; v < vals.length - 1; v++) {
+              const thresh = (vals[v] + vals[v + 1]) / 2;
+              const left = [];
+              const right = [];
+              let wLeft = 0;
+              let wRight = 0;
+
+              for (let i = 0; i < subset.length; i++) {
+                if (subset[i].features[f] <= thresh) {
+                  left.push(subset[i]);
+                  wLeft += subset[i].weight;
+                } else {
+                  right.push(subset[i]);
+                  wRight += subset[i].weight;
+                }
+              }
+
+              if (left.length < minSamplesLeaf || right.length < minSamplesLeaf) continue;
+
+              const gain =
+                currentGini -
+                (wLeft / wSum) * giniImpurity(left) -
+                (wRight / wSum) * giniImpurity(right);
+
+              if (gain > bestGain) {
+                bestGain = gain;
+                bestFeat = f;
+                bestThresh = thresh;
+                bestLeft = left;
+                bestRight = right;
+              }
+            }
+          }
+
+          if (bestFeat === -1 || bestGain <= 1e-9) {
+            return { isLeaf: true, prob1, count: subset.length };
+          }
+
+          importances[bestFeat] += (wSum / totalWeight) * bestGain;
+
+          return {
+            isLeaf: false,
+            featureIdx: bestFeat,
+            threshold: bestThresh,
+            prob1,
+            count: subset.length,
+            left: buildNode(bestLeft, depth + 1),
+            right: buildNode(bestRight, depth + 1)
+          };
+        }
+
+        const root = buildNode(items, 0);
+        const impSum = importances.reduce((a, b) => a + b, 0);
+        const normImportances = FEATURE_NAMES.map((name, idx) => ({
+          name,
+          score: impSum > 0 ? importances[idx] / impSum : 0
+        })).sort((a, b) => b.score - a.score);
+
+        return { root, importances: normImportances };
+      }
+
+      function predictCartProb(node, features) {
+        let cur = node;
+        while (!cur.isLeaf) {
+          cur = features[cur.featureIdx] <= cur.threshold ? cur.left : cur.right;
+        }
+        return cur.prob1;
+      }
+
+      function trainLogisticRegression(trainData, lr, epochs, l2) {
+        const n = trainData.length;
+        const d = FEATURE_NAMES.length;
+        const weights = computeBalancedWeights(trainData);
+
+        const means = new Array(d).fill(0);
+        const stds = new Array(d).fill(1);
+
+        for (let j = 0; j < d; j++) {
+          let sum = 0;
+          for (let i = 0; i < n; i++) sum += trainData[i].features[j];
+          means[j] = sum / n;
+
+          let sqSum = 0;
+          for (let i = 0; i < n; i++) {
+            const diff = trainData[i].features[j] - means[j];
+            sqSum += diff * diff;
+          }
+          const sd = Math.sqrt(sqSum / n);
+          stds[j] = sd > 1e-8 ? sd : 1;
+        }
+
+        const X = trainData.map((row) =>
+          row.features.map((val, j) => (val - means[j]) / stds[j])
+        );
+        const y = trainData.map((row) => row.label);
+        const wSum = weights.reduce((a, b) => a + b, 0);
+
+        const beta = new Array(d).fill(0);
+        let bias = 0;
+
+        for (let ep = 0; ep < epochs; ep++) {
+          const gradB = new Array(d).fill(0);
+          let gradBias = 0;
+
+          for (let i = 0; i < n; i++) {
+            let z = bias;
+            for (let j = 0; j < d; j++) z += beta[j] * X[i][j];
+            const p = 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, z))));
+            const err = (p - y[i]) * weights[i];
+
+            gradBias += err;
+            for (let j = 0; j < d; j++) {
+              gradB[j] += err * X[i][j];
+            }
+          }
+
+          bias -= lr * (gradBias / wSum);
+          for (let j = 0; j < d; j++) {
+            beta[j] -= lr * (gradB[j] / wSum + l2 * beta[j]);
+          }
+        }
+
+        return { beta, bias, means, stds };
+      }
+
+      function predictLogisticProb(model, features) {
+        let z = model.bias;
+        for (let j = 0; j < features.length; j++) {
+          const norm = (features[j] - model.means[j]) / model.stds[j];
+          z += model.beta[j] * norm;
+        }
+        return 1 / (1 + Math.exp(-Math.max(-30, Math.min(30, z))));
+      }
+
+      function evaluatePredictions(preds, actuals) {
+        let tp = 0;
+        let fn = 0;
+        let fp = 0;
+        let tn = 0;
+
+        for (let i = 0; i < actuals.length; i++) {
+          if (actuals[i] === 1 && preds[i] === 1) tp++;
+          else if (actuals[i] === 1 && preds[i] === 0) fn++;
+          else if (actuals[i] === 0 && preds[i] === 1) fp++;
+          else tn++;
+        }
+
+        const total = actuals.length || 1;
+        const accuracy = (tp + tn) / total;
+        const precision = tp + fp > 0 ? tp / (tp + fp) : 0;
+        const recall = tp + fn > 0 ? tp / (tp + fn) : 0;
+        const f1 = precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+
+        return { accuracy, precision, recall, f1, tp, fn, fp, tn };
+      }
+
+/* ===== 화면 ===== */
+(function () {
+'use strict';
+const DATA_FILES = ['data/asos_1.csv', 'data/asos_2.csv', 'data/asos_3.csv', 'data/asos_4.csv'];
+const KEY = 'heatguard.claude.v1';
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = (n) => String(n).padStart(2, '0');
+const dstr = (t) => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+const tstr = (t) => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const pct = (x) => (x * 100).toFixed(1) + '%';
+
+/* 저장 */
+function blank() { return { theme: null, measures: [], notices: [], rooms: [] }; }
+let S = blank();
+try { const raw = localStorage.getItem(KEY); if (raw) { const o = JSON.parse(raw); if (o && Array.isArray(o.measures) && Array.isArray(o.notices) && Array.isArray(o.rooms)) S = Object.assign(blank(), o); } } catch (e) {}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+/* 알림 */
+let toastT = null;
+function toast(msg, err) { const el = $('toast'); el.textContent = msg; el.className = 'toast' + (err ? ' err' : ''); el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (el.hidden = true), 3500); }
+
+/* 두 번 눌러 확인 */
+const pending = new Map();
+function confirm2(key, btn, text) {
+  const p = pending.get(key);
+  if (p) { clearTimeout(p.t); pending.delete(key); btn.textContent = p.orig; return true; }
+  const orig = btn.textContent; btn.textContent = text;
+  pending.set(key, { orig, t: setTimeout(() => { pending.delete(key); if (document.body.contains(btn)) btn.textContent = orig; }, 4000) });
+  return false;
+}
+
+/* 테마 */
+function applyTheme() {
+  const dark = S.theme ? S.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  if (S.theme) document.documentElement.setAttribute('data-theme', S.theme); else document.documentElement.removeAttribute('data-theme');
+  $('themeBtn').textContent = dark ? '밝은 화면' : '어두운 화면';
+  redrawCharts();
+}
+$('themeBtn').addEventListener('click', () => {
+  const dark = S.theme ? S.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  S.theme = dark ? 'light' : 'dark'; save(); applyTheme();
+});
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!S.theme) applyTheme(); }); } catch (e) {}
+
+/* 탭 */
+function showTab(name) {
+  document.querySelectorAll('nav button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+  ['judge', 'stats', 'records'].forEach((n) => ($('tab-' + n).hidden = n !== name));
+  if (name === 'records') renderRecords();
+  if (name === 'stats') redrawCharts();
+}
+document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+/* ===== ① 지금 판정 ===== */
+const LEVEL_BADGE = { normal: 'b-ok', warning: 'b-warn', danger: 'b-bad' };
+function current() {
+  const v = HeatRules.validateWeatherInput($('ta').value, $('rh').value);
+  if (!v.valid) return { error: ($('ta').value === '' && $('rh').value === '') ? null : v.message };
+  const calc = HeatRules.calcApparentTemp(v.ta, v.rh);
+  const judged = HeatRules.judgeHeat(calc.value, { heightM: $('hgt').value, atWorkSpot: $('spot').checked, noDirectAirflow: $('noAir').checked, workHours: $('hrs').value });
+  return { ta: v.ta, rh: v.rh, calc, judged };
+}
+function nextGap(t) { const n = [31, 33, 35, 38].find((x) => x > t); return n === undefined ? '' : `다음 기준(${n}℃)까지 ${(n - t).toFixed(1)}℃`; }
+function noticeText(c) {
+  const t = c.calc.value, ts = t.toFixed(1), L = [];
+  if (c.judged.isReferenceOnly) L.push('[참고값: 측정 조건 미확인]');
+  if (t < 31) L.push(`현재 체감온도 ${ts}℃로 폭염 기준(31℃) 미만입니다. 물을 자주 마시세요.`);
+  else if (t < 33) L.push(`현재 체감온도 ${ts}℃입니다. 물을 자주 마시고, 그늘·휴게실에서 주기적으로 쉬세요.`);
+  else {
+    L.push(`현재 체감온도 ${ts}℃입니다. 2시간 이내마다 20분 이상 쉬세요(법적 의무).`);
+    if (t >= 35) L.push('매시간 15분 이상 쉬고, 14~17시에는 불가피한 경우 외 옥외작업을 멈추세요(고용노동부 권고).');
+    if (t >= 38) L.push('긴급 작업 외 옥외작업을 멈추세요(고용노동부 권고).');
+  }
+  const loc = $('restLoc').value.trim(); if (loc) L.push(`휴게실: ${loc}`);
+  L.push('어지럼증·두통·메스꺼움이 있으면 즉시 작업을 멈추고 알려 주세요. 위급하면 119.');
+  return L.join('\n');
+}
+function renderJudge() {
+  const c = current(), box = $('verdict');
+  if (!c.calc) {
+    box.className = 'empty';
+    box.textContent = c.error || '기온과 습도를 넣으면 체감온도와 지금 지켜야 할 기준이 바로 나타납니다.';
+    $('notice').value = ''; return null;
+  }
+  const j = c.judged, gap = nextGap(c.calc.value);
+  const badge = j.isReferenceOnly ? '<span class="badge b-ref">참고값 (법정 판정 아님)</span>' : `<span class="badge ${LEVEL_BADGE[j.level]}">${esc(j.levelLabel)}</span>`;
+  let body = '';
+  if (j.isReferenceOnly) body = `<p class="muted" style="margin:10px 0 0">측정 조건을 확인해야 법정 판정이 됩니다: ${esc(j.referenceReasons.join(' · '))}</p>`;
+  else if (!j.items.length) body = '<p class="muted" style="margin:10px 0 0">체감온도 31℃ 미만으로 폭염 법정 조치 대상이 아닙니다. 물을 자주 마시게 하세요.</p>';
+  else body = '<ul class="items">' + j.items.map((it) => `<li><span class="badge ${it.type === 'mandatory' ? 'b-bad' : it.type === 'recommended' ? 'b-warn' : 'b-ref'}">${esc(it.badge)}</span><span><strong>${esc(it.threshold)}</strong> · ${esc(it.text)}</span></li>`).join('') + '</ul>';
+  box.className = 'verdict ' + j.level;
+  box.innerHTML = `<div class="vtop"><span class="big">${c.calc.value.toFixed(1)}℃</span><span class="muted">체감온도 (습구 ${c.calc.twRounded.toFixed(1)}℃)</span></div>
+    <div class="row" style="margin-top:8px">${badge}${gap ? `<span class="badge b-ref">${esc(gap)}</span>` : ''}</div>${body}`;
+  $('notice').value = noticeText(c);
+  return c;
+}
+['ta', 'rh', 'hgt', 'hrs', 'spot', 'noAir', 'restLoc'].forEach((id) => { $(id).addEventListener('input', renderJudge); $(id).addEventListener('change', renderJudge); });
+
+$('saveMeas').addEventListener('click', () => {
+  const c = renderJudge(); if (!c) return toast('기온과 습도를 먼저 올바르게 입력하세요.', true);
+  const now = Date.now();
+  S.measures.unshift({ id: uid(), date: dstr(now), time: tstr(now), zone: $('zone').value.trim(), ta: c.ta, rh: c.rh, feels: c.calc.value, height: $('hgt').value === '' ? null : Number($('hgt').value), level: c.judged.isReferenceOnly ? '참고값' : c.judged.levelLabel });
+  save(); toast('측정 기록을 저장했습니다.');
+});
+
+$('copyBtn').addEventListener('click', async () => {
+  const c = renderJudge(); if (!c) return toast('기온과 습도를 먼저 입력하세요.', true);
+  const text = $('notice').value, now = Date.now();
+  const rec = { id: uid(), date: dstr(now), time: tstr(now), feels: c.calc.value, level: c.judged.isReferenceOnly ? '참고값' : c.judged.levelLabel, text, how: '' };
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('no clipboard');
+    await navigator.clipboard.writeText(text);
+    rec.how = '복사함'; toast('복사했습니다. 단체 대화방에 붙여 넣으세요.');
+  } catch (e) {
+    const ta = $('notice'); ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+    rec.how = '직접 복사 안내'; toast('자동 복사가 안 되는 환경입니다. 선택된 문구를 길게 눌러 복사하세요.', true);
+  }
+  S.notices.unshift(rec); save();
+});
+
+/* 휴게공간 */
+function renderRoom() {
+  const t = $('raT').value, h = $('raH').value, simple = $('raType').value === '간이', box = $('raResult');
+  if (!simple && t === '' && h === '') { box.className = 'empty'; box.textContent = '온도와 습도를 넣으면 산업안전보건법 시행규칙 별표 21의2 기준과 비교합니다.'; return null; }
+  const res = HeatRules.judgeRestArea(t, h, simple, { drinkingWater: $('raWater').value, usable: $('raUse').value === '불가' ? '불가' : $('raUse').value });
+  const cls = res.needsCheck ? 'warning' : 'normal';
+  box.className = 'verdict ' + cls;
+  box.innerHTML = `<span class="badge ${res.needsCheck ? 'b-warn' : 'b-ok'}">${esc(res.status)}</span><ul class="plain" style="margin-top:8px">${res.messages.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>`;
+  return res;
+}
+['raType', 'raT', 'raH', 'raCool', 'raWater', 'raUse'].forEach((id) => { $(id).addEventListener('input', renderRoom); $(id).addEventListener('change', renderRoom); });
+$('raSave').addEventListener('click', () => {
+  const name = $('raName').value.trim(); if (!name) return toast('휴게공간 이름을 입력하세요.', true);
+  const res = renderRoom(); if (!res) return toast('온도와 습도를 입력하세요.', true);
+  const now = Date.now();
+  S.rooms.unshift({ id: uid(), date: dstr(now), time: tstr(now), name, type: $('raType').value, t: $('raT').value, h: $('raH').value, cool: $('raCool').value, water: $('raWater').value, use: $('raUse').value, status: res.needsCheck ? '점검 필요' : res.status });
+  save(); toast('휴게공간 점검 결과를 저장했습니다.');
+});
+
+/* 참고표 */
+(function matrix() {
+  const hs = [30, 40, 50, 60, 70, 80, 90]; let h = '<thead><tr><th>기온＼습도</th>' + hs.map((x) => `<th>${x}%</th>`).join('') + '</tr></thead><tbody>';
+  for (let t = 29; t <= 39; t++) { h += `<tr><th>${t}℃</th>`; hs.forEach((rh) => { const v = HeatRules.calcApparentTemp(t, rh).value; h += `<td class="${v >= 35 ? 'c-bad' : v >= 33 ? 'c-bad' : v >= 31 ? 'c-warn' : 'c-ok'}">${v.toFixed(1)}</td>`; }); h += '</tr>'; }
+  $('matrix').innerHTML = h + '</tbody>';
+})();
+
+/* ===== ③ 기록 ===== */
+function tableHTML(cols, rows, kind) {
+  if (!rows.length) return '<div class="empty">자료 없음</div>';
+  return `<table><thead><tr>${cols.map((c) => `<th class="${c[2] || ''}">${esc(c[0])}</th>`).join('')}<th></th></tr></thead><tbody>${rows.map((r) => `<tr>${cols.map((c) => `<td class="${c[2] || ''}" style="${c[0] === '공지 문구' ? 'white-space:pre-line;min-width:240px' : ''}">${esc(c[1](r))}</td>`).join('')}<td><button class="btn ghost sm" type="button" data-del="${kind}" data-id="${esc(r.id)}">삭제</button></td></tr>`).join('')}</tbody></table>`;
+}
+const COLS = {
+  measures: [['날짜', (r) => r.date], ['시각', (r) => r.time], ['구역', (r) => r.zone || '-'], ['기온(℃)', (r) => r.ta, 'n'], ['습도(%)', (r) => r.rh, 'n'], ['체감(℃)', (r) => r.feels.toFixed(1), 'n'], ['높이(m)', (r) => (r.height == null ? '-' : r.height), 'n'], ['판정', (r) => r.level]],
+  notices: [['날짜', (r) => r.date], ['시각', (r) => r.time], ['체감(℃)', (r) => r.feels.toFixed(1), 'n'], ['적용 기준', (r) => r.level], ['방법', (r) => r.how], ['공지 문구', (r) => r.text]],
+  rooms: [['날짜', (r) => r.date], ['시각', (r) => r.time], ['이름', (r) => r.name], ['종류', (r) => r.type], ['온도(℃)', (r) => r.t || '-', 'n'], ['습도(%)', (r) => r.h || '-', 'n'], ['냉방', (r) => r.cool || '-'], ['식수', (r) => r.water || '-'], ['이용', (r) => r.use || '-'], ['판정', (r) => r.status]],
+};
+let trendChart = null;
+function renderRecords() {
+  $('tMeasures').innerHTML = tableHTML(COLS.measures, S.measures, 'measures');
+  $('tNotices').innerHTML = tableHTML(COLS.notices, S.notices, 'notices');
+  $('tRooms').innerHTML = tableHTML(COLS.rooms, S.rooms, 'rooms');
+  const w = $('cTrendW');
+  if (trendChart) { trendChart.destroy(); trendChart = null; }
+  if (S.measures.length < 2 || typeof Chart === 'undefined') { w.hidden = true; return; }
+  w.hidden = false;
+  const rows = S.measures.slice().reverse();
+  trendChart = new Chart($('cTrend'), { type: 'line', data: { labels: rows.map((r) => `${r.date.slice(5)} ${r.time}`), datasets: [{ label: '체감온도(℃)', data: rows.map((r) => r.feels), borderColor: cssVar('--accent'), backgroundColor: cssVar('--accent'), tension: 0.2 }] }, options: baseOpts({ legend: false }) });
+}
+document.getElementById('tab-records').addEventListener('click', (e) => {
+  const d = e.target.closest('[data-del]');
+  if (d) { if (!confirm2('del' + d.dataset.id, d, '한 번 더')) return; S[d.dataset.del] = S[d.dataset.del].filter((r) => r.id !== d.dataset.id); save(); renderRecords(); return; }
+  const c = e.target.closest('[data-csv]');
+  if (c) {
+    const k = c.dataset.csv, cols = COLS[k], rows = S[k];
+    if (!rows.length) return toast('내려받을 기록이 없습니다.', true);
+    const q = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+    const csv = '﻿' + [cols.map((x) => q(x[0])).join(','), ...rows.map((r) => cols.map((x) => q(x[1](r))).join(','))].join('\r\n');
+    download(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `heatguard_${k}_${dstr(Date.now())}.csv`);
+  }
+});
+function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
+$('backupBtn').addEventListener('click', () => download(new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' }), `heatguard_backup_${dstr(Date.now())}.json`));
+$('importIn').addEventListener('change', (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try { const o = JSON.parse(rd.result); if (!o || !Array.isArray(o.measures) || !Array.isArray(o.notices) || !Array.isArray(o.rooms)) throw 0; S = Object.assign(blank(), o); save(); applyTheme(); renderRecords(); toast('백업을 불러왔습니다.'); }
+    catch (err) { toast('HeatGuard 백업 파일이 아닙니다. 기존 기록은 그대로입니다.', true); }
+  };
+  rd.readAsText(f, 'utf-8'); e.target.value = '';
+});
+$('clearBtn').addEventListener('click', (e) => { if (!confirm2('clear', e.target, '한 번 더 누르면 모두 삭제')) return; const th = S.theme; S = blank(); S.theme = th; save(); renderRecords(); toast('모든 기록을 삭제했습니다.'); });
+
+/* ===== ② 폭염 통계·AI ===== */
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function baseOpts(o) {
+  o = o || {};
+  const tx = cssVar('--muted'), gr = cssVar('--line');
+  return { responsive: true, maintainAspectRatio: false, animation: false,
+    plugins: { legend: { display: o.legend !== false, labels: { color: tx, boxWidth: 12 } }, tooltip: { mode: 'index', intersect: false } },
+    scales: { x: { ticks: { color: tx }, grid: { color: gr } }, y: Object.assign({ ticks: { color: tx }, grid: { color: gr } }, o.y || {}) } };
+}
+let A = null; // 분석 결과
+let charts = {};
+const SERIES = () => [cssVar('--brand') === '#0a2433' ? '#7aa7c7' : '#0c3b52', cssVar('--accent'), '#3b82f6', '#d97706', '#c0262d', '#7c3aed'];
+
+function analyze(texts) {
+  const P = { total: 0, badTime: 0, dup: 0, qc: 0, miss: 0, range: 0 };
+  const stations = new Set(), seen = new Set(), obs = [];
+  for (const text of texts) {
+    const rows = parseCsv(text); if (rows.length < 2) continue;
+    const c = findColumns(rows[0]);
+    if (c.idxTime < 0 || c.idxTemp < 0 || c.idxHum < 0 || c.idxWind < 0) throw new Error('필수 열(일시·기온·습도·풍속)이 없습니다.');
+    if (c.idxTempQc < 0 || c.idxHumQc < 0 || c.idxWindQc < 0) throw new Error('기온·습도·풍속의 QC플래그 열이 필요합니다. QC플래그를 체크해 다시 내려받으세요.');
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i]; P.total++;
+      const st = c.idxStation >= 0 ? r[c.idxStation] : '-', nm = c.idxStationName >= 0 ? r[c.idxStationName] : '';
+      stations.add(nm ? `${nm}(${st})` : st);
+      if (stations.size > 1) throw new Error(`관측소가 2곳 이상 섞여 있습니다: ${Array.from(stations).join(', ')}. 1곳의 자료만 사용하세요.`);
+      const tm = parseAsosTimestamp(r[c.idxTime]); if (!tm) { P.badTime++; continue; }
+      if (seen.has(tm.ms)) { P.dup++; continue; } seen.add(tm.ms);
+      const okq = (v) => { v = String(v == null ? '' : v).trim(); return v === '' || v === '0'; };
+      if (!okq(r[c.idxTempQc]) || !okq(r[c.idxHumQc]) || !okq(r[c.idxWindQc])) { P.qc++; continue; }
+      const rt = r[c.idxTemp], rh = r[c.idxHum], rw = r[c.idxWind];
+      if (rt == null || rh == null || rw == null || rt === '' || rh === '' || rw === '') { P.miss++; continue; }
+      const ta = Number(rt), hu = Number(rh), ws = Number(rw);
+      if ([ta, hu, ws].some(Number.isNaN)) { P.miss++; continue; }
+      if (ta < -40 || ta > 60 || hu <= 0 || hu > 100 || ws < 0) { P.range++; continue; }
+      const ap = HeatRules.calcApparentTemp(ta, hu); if (!ap) { P.range++; continue; }
+      obs.push({ ms: tm.ms, year: tm.year, month: tm.month, hour: tm.hour, ta, rh: hu, wind: ws, ap: ap.value });
+    }
+  }
+  if (!obs.length) throw new Error('품질 처리를 통과한 관측 자료가 없습니다.');
+  obs.sort((a, b) => a.ms - b.ms);
+  const byMs = new Map(obs.map((o) => [o.ms, o]));
+  const ds = [];
+  obs.forEach((o) => {
+    if (o.month < 5 || o.month > 9 || o.hour < 6 || o.hour > 15) return;
+    const f = byMs.get(o.ms + 3 * 3600 * 1000); if (!f) return;
+    ds.push({ year: o.year, features: [o.ta, o.rh, o.wind, o.hour, o.month], apparentTemp: o.ap, label: f.ap >= 33 ? 1 : 0 });
+  });
+  const years = Array.from(new Set(ds.map((d) => d.year))).sort((a, b) => a - b);
+  if (years.length < 2) throw new Error('2개 연도 이상의 5~9월 자료가 필요합니다.');
+  const testYear = years[years.length - 1];
+  const train = ds.filter((d) => d.year !== testYear), test = ds.filter((d) => d.year === testYear);
+  const trainPos = train.filter((d) => d.label).length, testPos = test.filter((d) => d.label).length;
+  if (!trainPos || !testPos) throw new Error('학습 또는 시험 기간에 3시간 뒤 33℃ 이상 사례가 없어 비교할 수 없습니다.');
+  const y = test.map((d) => d.label);
+  const tree = trainCartTree(train, 4, 20);
+  const logit = trainLogisticRegression(train, 0.5, 2000, 0.001);
+  const M = [
+    { name: '규칙 (현재 체감 ≥ 31℃)', short: '규칙', m: evaluatePredictions(test.map((d) => (d.apparentTemp >= 31 ? 1 : 0)), y) },
+    { name: '결정트리 (깊이 4)', short: '결정트리', m: evaluatePredictions(test.map((d) => (predictCartProb(tree.root, d.features) > 0.5 ? 1 : 0)), y) },
+    { name: '로지스틱 회귀', short: '로지스틱 회귀', m: evaluatePredictions(test.map((d) => (predictLogisticProb(logit, d.features) > 0.5 ? 1 : 0)), y) },
+  ];
+  const allYears = Array.from(new Set(obs.map((o) => o.year))).sort((a, b) => a - b);
+  const months = [5, 6, 7, 8, 9];
+  const monthly = allYears.map((yr) => months.map((mo) => obs.filter((o) => o.year === yr && o.month === mo && o.ap >= 33).length));
+  const hourly = Array.from({ length: 24 }, (_, h) => { const s = obs.filter((o) => (o.month === 7 || o.month === 8) && o.hour === h); return s.length ? { ap: s.reduce((a, o) => a + o.ap, 0) / s.length, ta: s.reduce((a, o) => a + o.ta, 0) / s.length } : null; });
+  const first = new Date(obs[0].ms), last = new Date(obs[obs.length - 1].ms);
+  return { station: Array.from(stations)[0], range: `${dstr(first)} ~ ${dstr(last)}`, allYears, years, testYear, trainYears: years.slice(0, -1), P, valid: obs.length, rows: ds.length, train: train.length, trainPos, test: test.length, testPos, tree, M, monthly, hourly };
+}
+
+function drawCharts() {
+  Object.values(charts).forEach((c) => c && c.destroy()); charts = {};
+  if (!A) return;
+  const ws = ['cMonthW', 'cHourW', 'cMetW'];
+  if (typeof Chart === 'undefined') { ws.forEach((w) => ($(w).innerHTML = '<div class="empty">그래프를 불러오지 못해 표만 표시합니다.</div>')); $('cMonthW').style.height = $('cHourW').style.height = $('cMetW').style.height = 'auto'; return; }
+  const col = SERIES();
+  charts.m = new Chart($('cMonth'), { type: 'bar', data: { labels: ['5월', '6월', '7월', '8월', '9월'], datasets: A.allYears.map((yr, i) => ({ label: yr + '년', data: A.monthly[i], backgroundColor: col[i % col.length], borderRadius: 3 })) }, options: baseOpts({ y: { beginAtZero: true, title: { display: true, text: '시간', color: cssVar('--muted') } } }) });
+  const hrs = A.hourly.map((_, h) => pad(h) + '시');
+  charts.h = new Chart($('cHour'), { type: 'line', data: { labels: hrs, datasets: [
+    { label: '평균 체감온도(℃)', data: A.hourly.map((v) => (v ? +v.ap.toFixed(2) : null)), borderColor: cssVar('--accent'), backgroundColor: cssVar('--accent'), tension: 0.25, pointRadius: 2 },
+    { label: '평균 기온(℃)', data: A.hourly.map((v) => (v ? +v.ta.toFixed(2) : null)), borderColor: col[0], backgroundColor: col[0], tension: 0.25, pointRadius: 2 },
+    { label: '33℃ 법정 휴식 기준', data: hrs.map(() => 33), borderColor: cssVar('--bad'), borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5 },
+    { label: '31℃ 기준', data: hrs.map(() => 31), borderColor: cssVar('--warn'), borderDash: [3, 4], pointRadius: 0, borderWidth: 1.2 } ] }, options: baseOpts() });
+  charts.r = new Chart($('cMet'), { type: 'bar', data: { labels: A.M.map((x) => x.short), datasets: [
+    { label: '재현율(%)', data: A.M.map((x) => +(x.m.recall * 100).toFixed(1)), backgroundColor: cssVar('--accent'), borderRadius: 3 },
+    { label: '정확도(%)', data: A.M.map((x) => +(x.m.accuracy * 100).toFixed(1)), backgroundColor: col[0], borderRadius: 3 } ] }, options: baseOpts({ y: { min: 0, max: 100 } }) });
+}
+function redrawCharts() { if (A && !$('tab-stats').hidden) drawCharts(); }
+
+function renderStats() {
+  const a = A;
+  $('src').textContent = `자료: 기상청 기상자료개방포털 종관기상관측(ASOS) 시간 자료 · ${a.station} · ${a.range}`;
+  // 요약
+  let best = { yr: 0, mo: 0, n: -1 };
+  a.monthly.forEach((row, i) => row.forEach((n, j) => { if (n > best.n) best = { yr: a.allYears[i], mo: j + 5, n }; }));
+  const moTot = [0, 1, 2, 3, 4].map((j) => a.monthly.reduce((s, row) => s + row[j], 0));
+  const topMo = moTot.indexOf(Math.max(...moTot));
+  let hot = -1, hotV = -Infinity; a.hourly.forEach((v, h) => { if (v && v.ap > hotV) { hotV = v.ap; hot = h; } });
+  const bestM = a.M.reduce((b, x) => (x.m.recall > b.m.recall ? x : b));
+  $('statCards').innerHTML = `
+    <div class="stat"><div class="k">33℃ 이상이 가장 많은 달</div><div class="v">${topMo + 5}월</div><div class="d">${a.allYears.length}개 연도 합계 ${moTot[topMo]}시간</div></div>
+    <div class="stat"><div class="k">7~8월 가장 더운 시각</div><div class="v">${pad(hot)}시</div><div class="d">평균 체감온도 ${hotV.toFixed(1)}℃</div></div>
+    <div class="stat"><div class="k">위험을 가장 잘 찾은 방법</div><div class="v">${pct(bestM.m.recall)}</div><div class="d">${esc(bestM.short)} · ${a.testYear}년 위험 ${a.testPos}건 중 ${bestM.m.tp}건</div></div>`;
+  $('splitTxt').textContent = `학습 ${a.trainYears.join('·')}년 ${a.train.toLocaleString()}건 (위험 ${a.trainPos}건) → 시험 ${a.testYear}년 ${a.test.toLocaleString()}건 (위험 ${a.testPos}건)`;
+  const maxR = Math.max(...a.M.map((x) => x.m.recall)), minFN = Math.min(...a.M.map((x) => x.m.fn));
+  $('metricTbl').innerHTML = `<table><thead><tr><th>방법</th><th class="n">재현율</th><th class="n">놓친 위험</th><th class="n">헛경보</th><th class="n">정확도</th><th class="n">정밀도</th><th class="n">F1</th></tr></thead><tbody>${a.M.map((x) => `<tr><td>${esc(x.name)}</td><td class="n ${x.m.recall === maxR ? 'hl' : ''}">${pct(x.m.recall)}</td><td class="n ${x.m.fn === minFN ? 'hl' : ''}">${x.m.fn}건</td><td class="n">${x.m.fp}건</td><td class="n">${pct(x.m.accuracy)}</td><td class="n">${pct(x.m.precision)}</td><td class="n">${x.m.f1.toFixed(3)}</td></tr>`).join('')}</tbody></table>`;
+  $('treeTxt').textContent = treeText(a.tree.root, 0);
+  $('impTbl').innerHTML = `<table><thead><tr><th>속성</th><th class="n">중요도</th></tr></thead><tbody>${a.tree.importances.map((x) => `<tr><td>${esc(x.name)}</td><td class="n">${pct(x.score)}</td></tr>`).join('')}</tbody></table>`;
+  const P = a.P;
+  $('preTbl').innerHTML = `<table><tbody>
+    <tr><th>관측소 · 기간</th><td>${esc(a.station)} · ${esc(a.range)}</td></tr>
+    <tr><th>원본 행</th><td class="mono">${P.total.toLocaleString()}</td></tr>
+    <tr><th>제거</th><td>일시 오류 ${P.badTime} → 중복 ${P.dup} → QC플래그 이상 ${P.qc} → 결측 ${P.miss} → 범위 밖 ${P.range}</td></tr>
+    <tr><th>품질 처리 후</th><td class="mono">${a.valid.toLocaleString()}</td></tr>
+    <tr><th>분석 자료</th><td>5~9월 06~15시, 3시간 뒤 관측 있음: <span class="mono">${a.rows.toLocaleString()}</span></td></tr>
+    <tr><th>학습</th><td>${a.trainYears.join(', ')}년 · ${a.train.toLocaleString()}건 (3시간 뒤 33℃ 이상 ${a.trainPos}건)</td></tr>
+    <tr><th>시험</th><td>${a.testYear}년 · ${a.test.toLocaleString()}건 (3시간 뒤 33℃ 이상 ${a.testPos}건)</td></tr>
+  </tbody></table>`;
+  $('statsErr').hidden = true; $('statsBody').hidden = false;
+  redrawCharts();
+}
+function treeText(n, d) {
+  const sp = '  '.repeat(d);
+  if (n.isLeaf) return `${sp}→ ${n.prob1 > 0.5 ? '위험 (33℃ 이상)' : '안전 (33℃ 미만)'}  [학습 ${n.count}건]\n`;
+  const f = FEATURE_NAMES[n.featureIdx], th = n.threshold.toFixed(2);
+  return `${sp}${f} ≤ ${th} 이면\n${treeText(n.left, d + 1)}${sp}${f} > ${th} 이면\n${treeText(n.right, d + 1)}`;
+}
+function statsError(msg) { $('src').textContent = ''; const e = $('statsErr'); e.hidden = false; e.innerHTML = `<h2>자료 없음</h2><p class="muted" style="margin:0 0 12px">${esc(msg)}</p><label class="btn" style="cursor:pointer">기상청 CSV 파일 고르기<input type="file" multiple hidden data-csvpick></label>`;
+  e.querySelector('[data-csvpick]').addEventListener('change', onPick); $('statsBody').hidden = true; }
+
+async function decodeBuf(buf) { return readCsvFileText({ arrayBuffer: async () => buf }); }
+async function loadBuiltIn() {
+  const texts = [];
+  for (const f of DATA_FILES) { try { const r = await fetch(f, { cache: 'no-cache' }); if (r.ok) texts.push(await decodeBuf(await r.arrayBuffer())); } catch (e) {} }
+  if (!texts.length) return statsError('내장된 기상청 자료를 불러오지 못했습니다. 파일을 직접 열면(더블클릭) 보안 때문에 자동으로 못 불러옵니다. GitHub Pages 주소로 열거나, 아래 버튼으로 asos_1~4.csv를 한꺼번에 고르세요.');
+  try { A = analyze(texts); renderStats(); } catch (e) { statsError(e.message); }
+}
+$('csvIn').addEventListener('change', onPick);
+async function onPick(e) {
+  const fs = Array.from(e.target.files || []); if (!fs.length) return;
+  $('csvNames').textContent = '선택: ' + fs.map((f) => f.name).join(', ');
+  if (fs.some((f) => !/\.csv$/i.test(f.name))) { toast('CSV 파일(.csv)만 고를 수 있습니다.', true); e.target.value = ''; return; }
+  try { const texts = []; for (const f of fs) texts.push(await readCsvFileText(f)); A = analyze(texts); renderStats(); toast('올린 자료로 다시 분석했습니다.'); }
+  catch (err) { toast(err.message, true); }
+  e.target.value = '';
+}
+$('predBtn').addEventListener('click', () => {
+  const out = $('predOut');
+  if (!A) return toast('먼저 기상청 자료가 분석되어야 합니다.', true);
+  const v = ['pT', 'pRh', 'pW', 'pH', 'pMo'].map((id) => $(id).value);
+  if (v.some((x) => x === '' || Number.isNaN(Number(x)))) return toast('다섯 칸을 모두 숫자로 입력하세요.', true);
+  const [t, rh, w, h, mo] = v.map(Number);
+  if (mo < 5 || mo > 9 || h < 6 || h > 15) return toast('월은 5~9, 시각은 6~15 사이로 입력하세요.', true);
+  const feat = [t, rh, w, h, mo], steps = []; let n = A.tree.root;
+  while (!n.isLeaf) { const left = feat[n.featureIdx] <= n.threshold; steps.push(`${FEATURE_NAMES[n.featureIdx]} ${feat[n.featureIdx]} ${left ? '≤' : '>'} ${n.threshold.toFixed(2)}`); n = left ? n.left : n.right; }
+  const hi = n.prob1 > 0.5;
+  out.className = 'verdict ' + (hi ? 'danger' : 'normal');
+  out.innerHTML = `<strong>3시간 뒤 33℃ 이상 가능성: ${hi ? '높음' : '낮음'}</strong><ol class="path">${steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol><p class="note">결정트리 판단 경로입니다. 균형 가중치로 학습해 확률값은 표시하지 않습니다. 참고용이며 법정 판정을 대신하지 않습니다.</p>`;
+});
+
+/* 시작 */
+applyTheme();
+renderJudge();
+loadBuiltIn();
+})();
+</script>
+</body>
+</html>
